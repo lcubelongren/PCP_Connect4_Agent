@@ -1,1 +1,1 @@
-### Connect4 Agent
+## Connect4 Agent
