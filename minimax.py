@@ -3,13 +3,20 @@ from typing import Optional, Tuple
 from agents.connectn.common import PlayerAction, BoardPiece, SavedState, check_end_state
 
 
+"""
+this is a raw minimax agent without alpha-beta pruning
+"""
+
+
 def heuristic(
         board: np.ndarray, player: BoardPiece
 ) -> np.int:
-    # using similar code as what is used to check for a connect_n
-    # we can create a heuristic that assigns a higher value to a board
-    # where a player has more adjacent pieces and the highest value
-    # for when the player has a winning board
+    """
+    using similar code as what is used to check for a connect_n
+    we can create a heuristic that assigns a higher value to a board
+    where a player has more adjacent pieces and the highest value
+    or when the player has a winning board
+    """
     from agents.connectn.common import CONNECT_N
 
     rows, cols = board.shape
@@ -42,48 +49,48 @@ def heuristic(
 
 
 def minimax(
-    board: np.ndarray, player: BoardPiece, depth: np.int, max_player: bool, node: np.int
-) -> np.int:
-    # implement the minimax move generator (without pruning for now)
-    # the idea for this generate move function is to minimize the possible loss for a worst-case scenario
-    # in practice, to do this a tree search algorithm is created
-    from agents.connectn.common import initialize_game_state
+    board: np.ndarray, player: BoardPiece, depth: np.int, max_player: bool
+) -> Tuple[PlayerAction, Optional[SavedState]]:
+    """
+    implement the minimax move generator (without pruning for now)
+    the idea for this generate move function is to minimize the possible loss for a worst-case scenario
+    in practice, to do this a tree search algorithm is created
+    """
     from agents.connectn.common import apply_player_action
     from agents.connectn.common import pretty_print_board
 
-    num_parents = np.shape(board)[1]  # number of moves initially
-    result = np.zeros((depth, num_parents))  # empty array for result
+    # should define which are columns are free here to reduce computation time
+    node_num = np.shape(board)[1]  # number of moves initially allowed
+    depth_result = np.zeros(node_num)  # empty array for result
 
-    # get the correct board
-    apply_player_action(board, node, player)
-    pretty_print_board(board)
+    # pretty_print_board(board)
 
     if depth == 0:  # if a terminal node, then use the heuristic
         return heuristic(board, player)
+
     if max_player:  # maximizing player level
         value = int(-1e6)  # negative infinity
-        for i in range(depth):
-            for node in range(num_parents):  # for each child node, maximize
-                result[i, node] = np.max([value, minimax(board, player, depth-1, False, node)])
+        for node in range(node_num):  # for each child node, maximize
+            board_copy = apply_player_action(board, node, player, copy=True)
+            comparison = minimax(board_copy, player, depth-1, False)
+            depth_result[node] = np.max([value, comparison])
+
     else:  # minimizing player level
         value = int(1e6)  # positive infinity
-        for i in range(depth):
-            for node in range(num_parents):  # for each child node, minimize
-                result[i, node] = np.min([value, minimax(board, player, depth-1, True, node)])
-    print(result)
-    return result
+        for node in range(node_num):  # for each child node, minimize
+            board_copy = apply_player_action(board, node, player, copy=True)
+            comparison = minimax(board_copy, player, depth-1, True)
+            depth_result[node] = np.min([value, comparison])
+    return depth_result
 
 
 def generate_move_minimax(
     board: np.ndarray, player: BoardPiece, saved_state: Optional[SavedState]
 ) -> Tuple[PlayerAction, Optional[SavedState]]:
-    from agents.connectn.common import initialize_game_state
-
-    depth = 0
-    num_parents = np.shape(board)[1]  # possible move choices
-    action_set = np.zeros(num_parents)  # empty move rating array
-    for node in range(num_parents):  # root node
-        action_set[node] = np.argmax(minimax(board, player, depth, True, node))
-    # print(action_set)
+    """
+    generate the move for the agent from the minimax function using our heuristic
+    """
+    depth = 1
+    action_set = minimax(board, player, depth, True)
     action = np.argmax(action_set)  # maximize the best move
     return action, saved_state
