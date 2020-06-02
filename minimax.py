@@ -5,6 +5,7 @@ from agents.connectn.common import PlayerAction, BoardPiece, SavedState, check_e
 
 """
 this is a raw minimax agent without alpha-beta pruning
+the heuristic functions can be found here
 """
 
 
@@ -16,8 +17,7 @@ def heuristic_basic(
     we can create a heuristic that assigns a higher value to a board
     where a player has more adjacent pieces and the highest value
     for when the player has a winning board
-    """
-    """
+
     this is the starting part of a better heuristic. 
     points that could be made better are that depth is not taken into account,
     which then makes the minimax agent not know that it could be losing if it 
@@ -26,8 +26,8 @@ def heuristic_basic(
     from agents.connectn.common import CONNECT_N
 
     rows, cols = board.shape
-    rows_edge = rows - CONNECT_N + 1
-    cols_edge = cols - CONNECT_N + 1
+    rows_edge = rows - CONNECT_N + 1  # needed row check range
+    cols_edge = cols - CONNECT_N + 1  # needed column check range
     rating = 0  # starting rating (no connecting pieces)
     degree = 5  # weighting for the number connected (exponential)
 
@@ -35,13 +35,13 @@ def heuristic_basic(
         for j in range(cols_edge):
             for k in range(CONNECT_N-1):  # count up to a winning board
                 if np.all(board[i, j:j+CONNECT_N-k] == player):  # connected_n-k
-                    rating += CONNECT_N ** degree
+                    rating += CONNECT_N ** degree  # higher rating for more connected
 
     for i in range(rows_edge):  # count horizontal pieces
         for j in range(cols):
             for k in range(CONNECT_N-1):  # count up to a winning board
                 if np.all(board[i:i+CONNECT_N-k, j] == player):  # connected_n-k
-                    rating += CONNECT_N ** degree
+                    rating += CONNECT_N ** degree  # higher rating for more connected
 
     for i in range(rows_edge):  # count diagonal pieces
         for j in range(cols_edge):
@@ -50,8 +50,8 @@ def heuristic_basic(
                 if np.all(np.diag(block) == player):
                     rating += CONNECT_N ** degree
                 if np.all(np.diag(block[::-1, :]) == player):
-                    rating += CONNECT_N ** degree
-    return rating
+                    rating += CONNECT_N ** degree  # higher rating for more connected
+    return rating  # return an int value for each board state
 
 
 def heuristic_better(
@@ -59,6 +59,7 @@ def heuristic_better(
 ) -> np.int:
     """
     taking our basic heuristic, let's make it a bit better
+    (have not yet thought of a way to improve the basic)
     """
     from agents.connectn.common import CONNECT_N
 

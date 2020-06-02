@@ -13,7 +13,7 @@ beta: best already explored option for the minimizer
 
 def minimax_ab(
     board: np.ndarray, alpha: np.int, beta: np.int, player: BoardPiece, depth: np.int, max_player: bool, heuristic
-) -> Tuple[PlayerAction, Optional[SavedState]]:
+) -> np.array:
     """
     implement the minimax move generator with alpha-beta pruning
     the idea for this generate move function is to minimize the possible loss for a worst-case scenario
@@ -68,9 +68,7 @@ def minimax_ab(
 def generate_move_minimax_ab(
     board: np.ndarray, player: BoardPiece, saved_state: Optional[SavedState]
 ) -> Tuple[PlayerAction, Optional[SavedState]]:
-    """
-    generate the move for the agent from the minimax with pruning function using our heuristic
-    """
+    """generate the move for the agent from the minimax with pruning function using our heuristic"""
     depth = 4
     # choose which heuristic to use
     heuristic = heuristic_basic
@@ -83,4 +81,4 @@ def generate_move_minimax_ab(
         action = 3  # put piece in the center
     else:
         action = np.argmax(action_set)  # maximize the best move
-    return action, saved_state
+    return PlayerAction(action), saved_state

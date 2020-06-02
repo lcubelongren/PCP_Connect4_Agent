@@ -9,7 +9,7 @@ PLAYER2 = BoardPiece(2)  # Position where Player 2 has a piece
 
 PlayerAction = np.int8  # The column next to be played in
 
-CONNECT_N = 4
+CONNECT_N = 4  # playing connect 4
 
 
 class GameState(Enum):
@@ -20,11 +20,6 @@ class GameState(Enum):
 
 def initialize_game_state() -> np.ndarray:
     return np.zeros((6, 7), dtype=BoardPiece(0))
-
-
-Board = initialize_game_state()
-# board[0, 0] = 2  # Lower left corner of board
-# board[5,6] = 1  # Upper right corner of board
 
 
 def pretty_print_board(board: np.ndarray) -> str:
@@ -61,88 +56,64 @@ def pretty_print_board(board: np.ndarray) -> str:
     return ''
 
 
-# pretty_print_board(Board)
-
-
 def apply_player_action(
         board: np.ndarray, action: PlayerAction, player: BoardPiece, copy: bool = False
 ) -> np.ndarray:
     num_row = np.shape(board)[0]
+    if copy:  # if copy is True
+        board_copy = board.copy()  # make the action on a copy
+    else:  # otherwise, use the input board
+        board_copy = board
     for row in range(num_row):  # looping over the number of rows
-        if board[row, action] == 0:  # if empty, add a piece
-            board[row, action] = player
+        if board_copy[row, action] == 0:  # if empty, add a piece
+            board_copy[row, action] = player
             break
         else:  # otherwise continue until empty slot is found
             pass
-    return board
+    return board_copy
 
 
 def string_to_board(pp_board: str) -> np.ndarray:
     raise NotImplemented()
 
 
-def connected_four_first_implementation(
-        board: np.ndarray, player: BoardPiece, last_action: Optional[PlayerAction] = None,
-) -> bool:
-    # Go through every point on the board
-    for i in board[0, :3]:
-        for j in board[:3, i]:
-            print(i, j)
-            # Check the three nearby points in every direction
-            count = 0
-            for k in range(4):
-                if board[i+k, j+k] == player:  # Diagonally
-                    count += 1
-                elif board[i+k, j] == player:  # Sideways
-                    count += 1
-                elif board[i, j+k] == player:  # Vertically
-                    count += 1
-                else:
-                    pass
-            if count == 4:
-                print('Connected Four!')
-                return True
-            else:
-                return False
-
-
 def connected_four(
     board: np.ndarray, player: BoardPiece, _last_action: Optional[PlayerAction] = None
 ) -> bool:
     rows, cols = board.shape
-    rows_edge = rows - CONNECT_N + 1
-    cols_edge = cols - CONNECT_N + 1
+    rows_edge = rows - CONNECT_N + 1  # needed row check range
+    cols_edge = cols - CONNECT_N + 1  # needed column check range
 
     for i in range(rows):  # check for a vertical connect_n
-        for j in range(cols_edge):
+        for j in range(cols_edge):  # over the needed range
             if np.all(board[i, j:j+CONNECT_N] == player):
                 return True
 
     for i in range(rows_edge):  # check for a horizontal connect_n
-        for j in range(cols):
+        for j in range(cols):  # over the needed range
             if np.all(board[i:i+CONNECT_N, j] == player):
                 return True
 
     for i in range(rows_edge):  # check for a diagonal connect_n
-        for j in range(cols_edge):
+        for j in range(cols_edge):  # over the needed range
             block = board[i:i+CONNECT_N, j:j+CONNECT_N]
             if np.all(np.diag(block) == player):
                 return True
             if np.all(np.diag(block[::-1, :]) == player):
                 return True
 
-    return False
+    return False  # else not a connected four
 
 
 def check_end_state(
         board: np.ndarray, player: BoardPiece, last_action: Optional[PlayerAction] = None,
 ) -> GameState:
     end_state = connected_four(board, player)
-    if board is -1:  # not implemented draw yet
+    if np.all(board != NO_PLAYER):  # entire board is filled
         return GameState.IS_DRAW
-    elif end_state is True:
+    elif end_state is True:  # player has connect_four
         return GameState.IS_WIN
-    elif end_state is False:
+    elif end_state is False:  # player doesn't have connect_four
         return GameState.STILL_PLAYING
 
 
