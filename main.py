@@ -3,6 +3,7 @@ from typing import Optional, Callable
 from agents.connectn.common import PlayerAction, BoardPiece, SavedState, GenMove
 from agents.agent_random import generate_move_random
 from agents.agent_minimax import generate_move_minimax
+from agents.agent_minimax_ab import generate_move_minimax_ab
 
 
 def user_move(board: np.ndarray, _player: BoardPiece, saved_state: Optional[SavedState]):
@@ -71,4 +72,6 @@ def human_vs_agent(
 if __name__ == "__main__":
     # human_vs_agent(user_move)              # play against yourself
     # human_vs_agent(generate_move_random)   # play against a random agent
-    human_vs_agent(generate_move_minimax)  # play against a minimax agent
+    # human_vs_agent(generate_move_minimax)  # play against a minimax agent
+    human_vs_agent(generate_move_minimax_ab)  # play against a minimax agent with pruning
+
