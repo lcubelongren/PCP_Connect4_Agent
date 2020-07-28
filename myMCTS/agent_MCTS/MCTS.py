@@ -1,9 +1,10 @@
 import numpy as np
 import random
 import time
+from math import log, sqrt
 from typing import Optional, Tuple
-from game_CONNECTN.connectn.common import PlayerAction, BoardPiece, SavedState, NO_PLAYER, PLAYER1, PLAYER2
-from game_CONNECTN.connectn.common import apply_player_action, check_end_state, GameState
+from game_CONNECTN.connectn.common import PlayerAction, BoardPiece, SavedState, NO_PLAYER, PLAYER1, PLAYER2, \
+    apply_player_action, check_end_state, GameState
 
 
 # functions to be used within the MCTS Class:
@@ -15,12 +16,6 @@ def allowed_moves(board: np.ndarray):
     output ->
     allowed: the allowed moves from the input board state
     """
-    # if np.ndim(board) == 2:
-    #     pass
-    # elif np.ndim(board) == 3:
-    #     board = board[-1]
-    # else:
-    #     print('broken allowed_moves input dimensions')
     allowed = list([])
     for i in range(np.shape(board)[1]):
         if board[-1, i] == NO_PLAYER:
@@ -61,7 +56,7 @@ class MCTSnet(object):
 
     """the entire Monte Carlo Tree Search network"""
 
-    def __init__(self, board, state=None, debug=False, **kwargs):
+    def __init__(self, board, state=None, debug=None, **kwargs):
         """
         kwargs ->
         calc_time: calculation length [s]
@@ -92,6 +87,7 @@ class MCTSnet(object):
         self.debug = debug
         self.random_count = 0
         self.not_random_count = 0
+        self.new_state_count = 0
 
     def best_move(self):
         """
@@ -116,20 +112,20 @@ class MCTSnet(object):
             self.run_sim()
             sim_num += 1
         time_elap = time.time() - start
-        print('simulation number: {0}, time elapsed: {1}'.format(sim_num, time_elap))
 
-        # print(len(self.wins))
-        # print(len(self.plays))
-
-        # choose the best move
+        # determine possible moves and the win ratio
         poss_moves = [(n, totuple(apply_player_action(np.array(self.board), n, player, copy=True))) for n in allowed]
-        win_ratio = ((self.wins.get((player, s), 0) / self.plays.get((player, s), 1), p) for p, s in poss_moves)
-        # maximize the number of visits
-        to_maximize = np.transpose(np.array(list(win_ratio)))
-        move = np.argmax(to_maximize[0])
+        # win_ratio = ((self.wins.get((player, s), 0) / self.plays.get((player, s), 1), p) for p, s in poss_moves)
+        # to_maximize = np.transpose(np.array(list(play_num)))
+        # move = np.argmax(to_maximize[0])
+        # choose the best move by maximizing the number of visits
+        play_num = list(self.plays.get((player, s), 0) for p, s in poss_moves)
+        move = np.argmax(play_num)
+        # could implement something here that randomizes equal play number results
 
         # debugging statistics ---
-        if self.debug:
+        if self.debug == 'short' or self.debug == 'long':
+            print('simulation number: {0}, time elapsed: {1}'.format(sim_num, time_elap))
             for data in sorted(
                 (((self.wins.get((player, s), 0) * 100) / self.plays.get((player, s), 1),  # 0. win percentage
                  self.wins.get((player, s), 0),  # 1. win number
@@ -140,11 +136,20 @@ class MCTSnet(object):
                     print("{3}: ({1} / {2}) = {0:.2f}% <--".format(*data))
                 else:
                     print("{3}: ({1} / {2}) = {0:.2f}%".format(*data))
-            print('Depth maximum     : {}'.format(self.depth_max))
-            # print('Possible moves  : {}'.format(allowed))
-            print('Random choice #   : {}'.format(self.random_count))
-            print('Educated choice # : {}'.format(self.not_random_count))
-            print('State array shape : {}'.format(np.shape(self.states)))
+            if self.debug == 'short':
+                pass
+            elif self.debug == 'long':
+                print('Depth maximum     : {}'.format(self.depth_max))
+                print('Possible moves  : {}'.format(allowed))
+                print('Random choice #   : {}'.format(self.random_count))
+                print('Educated choice # : {}'.format(self.not_random_count))
+                print('Visited state #   : {}'.format(self.new_state_count))
+                print('State array shape : {}'.format(np.shape(self.states)))
+        elif not self.debug:
+            pass
+        else:
+            print('Error: unknown debug arg. string')
+            print('-> possible choices include: \'short\', \'long\'')
 
         return move
 
@@ -152,19 +157,22 @@ class MCTSnet(object):
         """
         this function runs until the maximum moves have
         been reached or the board state is a win or draw.
-        in the process, depending upon if a player/state combo
-        is new, the agent will go between exploration and exploitation.
+        in the process, depending upon if a player/state combo is new,
+        the agent will go between exploration and exploitation.
         UCB1 is used to determine the ratio between them.
         """
-        # clear the set to record the states
-        # that have been visited this simulation
-        self.new_states.clear()
         # play a 'random' game from current position
         # that increasingly gains more information over simulations
         # and update the statistic tables with each result
         states_copy = self.states  # create copy to be used for this simulation
         state = self.states[-1]  # the node state that expansion has stopped at
-        # grab the current player
+
+        # clear the set to record the states
+        # that have been visited this simulation
+        self.new_state_count += len(self.new_states)
+        self.new_states.clear()
+
+        # grab the player
         player = grab_player(state)
 
         # run a simulation
@@ -174,26 +182,31 @@ class MCTSnet(object):
         has_drawn = False
         # --- SIMULATION PHASE is contained here
         while count < self.move_max and not (has_won or has_drawn):
-            # print(count)
             count += 1
             # --- SELECTION PHASE
             # define the legal moves for current position
             allowed = allowed_moves(np.array(state))
+
             # create all the possible next moves -> (play, board)
             poss_moves = [(n, totuple(apply_player_action(np.array(state), n, player, copy=True))) for n in allowed]
             # print(poss_moves)
+            # print(check_end_state(np.array(state), player))
             # check if we know the statistics for the possible moves
             # here we use the UCB1 algorithm
-            # if len(poss_moves) < 1:
-            #    break
+            # if check_end_state(np.array(state), player) == GameState.IS_DRAW:
+            #     has_drawn = True
+            # if len(poss_moves) == 0:
+            #     has_drawn = True
+
+            # if we have statistics for each play, make an educated decision
             if all(self.plays.get((player, s)) for p, s in poss_moves):
-                # If we have stats on all of the legal moves here, use them.
                 self.not_random_count += 1
                 for p, s in poss_moves:
                     win_ratio = self.wins[(player, s)] / self.plays[(player, s)]
-                    log_sum = np.log(np.sum(self.plays[(player, s)]))
-                    exploration_term = self.c * np.sqrt(log_sum / self.plays[(player, s)])
-                    out, move, state = np.max(win_ratio + exploration_term, p, np.array(s))
+                    log_sum = log(sum(self.plays[(player, s)]))
+                    exploration_term = self.c * sqrt(log_sum / self.plays[(player, s)])
+                    out, move, state = max(win_ratio + exploration_term, p, np.array(s))
+
             # otherwise just make a random decision
             else:
                 self.random_count += 1
@@ -219,9 +232,8 @@ class MCTSnet(object):
             # update the player
             player = grab_player(np.array(state))
 
-            # check if the state is winning
+            # check if the state is winning or drawn
             # if so, it breaks out of the while loop
-            # print(check_end_state(np.array(state), player))
             if check_end_state(np.array(state), player) == GameState.IS_WIN:
                 has_won = True
             elif check_end_state(np.array(state), player) == GameState.IS_DRAW:
@@ -244,11 +256,11 @@ def generate_move_mcts(board: np.ndarray, player: BoardPiece, saved_state: Optio
 
     """generate the move for the agent using the MCTS network"""
 
-    calc_time = 0.08
+    calc_time = 0.3
     move_max = 100
     c = np.sqrt(2)
 
-    mcts = MCTSnet(board, state=None, calc_time=calc_time, move_max=move_max, c=c, debug=True)
+    mcts = MCTSnet(board, state=None, calc_time=calc_time, move_max=move_max, c=c, debug='long')
     action = mcts.best_move()
 
     # hist = SavedState(first_state=[])
