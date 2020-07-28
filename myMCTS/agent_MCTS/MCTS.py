@@ -260,7 +260,7 @@ def generate_move_mcts(board: np.ndarray, player: BoardPiece, saved_state: Optio
     move_max = 100
     c = np.sqrt(2)
 
-    mcts = MCTSnet(board, state=None, calc_time=calc_time, move_max=move_max, c=c, debug='long')
+    mcts = MCTSnet(board, state=None, calc_time=calc_time, move_max=move_max, c=c, debug=None)
     action = mcts.best_move()
 
     # hist = SavedState(first_state=[])
