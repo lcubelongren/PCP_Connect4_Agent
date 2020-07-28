@@ -263,14 +263,5 @@ def generate_move_mcts(board: np.ndarray, player: BoardPiece, saved_state: Optio
     mcts = MCTSnet(board, state=None, calc_time=calc_time, move_max=move_max, c=c, debug=None)
     action = mcts.best_move()
 
-    # hist = SavedState(first_state=[])
-
-    # if np.ndim(hist.record(new_state=mcts.states)) == 2:
-    #    saved_state = SavedState(first_state=mcts.states)
-    # else:
-    #    saved_state = SavedState.record(new_state=mcts.states)
-
-    # print(saved_state)
-
     return action, saved_state
 
